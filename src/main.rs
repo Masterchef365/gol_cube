@@ -89,7 +89,7 @@ fn golcube_vertices(width: usize) -> Vec<Vertex> {
                     }
                     vertices.push(Vertex {
                         pos,
-                        color: pos.map(|v| if v > 0. { v } else { -v * 0.3 }),
+                        color: pos.map(|v| if v > 0. { v } else { -v * 0.01 }),
                         //color: [1.; 3],
                     });
                 }
@@ -127,10 +127,12 @@ fn golcube_tri_indices(cube: &GolCube) -> Vec<u32> {
     let face_idx_stride = idx_stride * idx_stride;
 
     for (face_idx, face) in cube.data.chunks_exact(face_data_stride).enumerate() {
-        let mut backface = |[a, b, c]: [u32; 3]| if face_idx > 3 {
-            indices.extend_from_slice(&[a, b, c]);
-        } else {
-            indices.extend_from_slice(&[c, b, a]);
+        let mut backface = |[a, b, c]: [u32; 3]| {
+            if face_idx % 2 != 0 {
+                indices.extend_from_slice(&[a, b, c]);
+            } else {
+                indices.extend_from_slice(&[c, b, a]);
+            }
         };
 
         let face_base = face_idx as u32 * face_idx_stride;
@@ -139,12 +141,8 @@ fn golcube_tri_indices(cube: &GolCube) -> Vec<u32> {
             for (x, &elem) in row.iter().enumerate() {
                 let elem_idx = row_base + x as u32;
                 if elem {
-                    backface([
-                        elem_idx + idx_stride,
-                        elem_idx + 1,
-                        elem_idx,
-                    ]);
-                    
+                    backface([elem_idx + idx_stride, elem_idx + 1, elem_idx]);
+
                     backface([
                         elem_idx + idx_stride,
                         elem_idx + idx_stride + 1,
