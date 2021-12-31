@@ -13,15 +13,16 @@ struct GolCubeVisualizer {
 
 impl App for GolCubeVisualizer {
     fn init(ctx: &mut Context, platform: &mut Platform, _: ()) -> Result<Self> {
-        let vertices = golcube_vertices(20);
-        let indices: Vec<u32> = (0..vertices.len() as u32).collect();
-        dbg!(vertices.len());
+        let width = 20;
+        let vertices = golcube_vertices(width);
+        //let indices: Vec<u32> = (0..vertices.len() as u32).collect();
+        let indices = golcube_dense_line_indices(width);
 
         Ok(Self {
             points_shader: ctx.shader(
                 DEFAULT_VERTEX_SHADER,
                 DEFAULT_FRAGMENT_SHADER,
-                Primitive::Points,
+                Primitive::Lines,
             )?,
             verts: ctx.vertices(&vertices, false)?,
             indices: ctx.indices(&indices, false)?,
@@ -82,7 +83,8 @@ fn golcube_vertices(width: usize) -> Vec<Vertex> {
                     }
                     vertices.push(Vertex {
                         pos,
-                        color: pos.map(|v| if v > 0. { v } else { -v * 0.8 }),
+                        //color: pos.map(|v| if v > 0. { v } else { -v * 0.8 }),
+                        color: [1.; 3],
                     });
                 }
             }
@@ -92,6 +94,27 @@ fn golcube_vertices(width: usize) -> Vec<Vertex> {
     vertices
 }
 
-fn golcube_indices(cube: &GolCube) -> Vec<u32> {
+fn golcube_dense_line_indices(width: usize) -> Vec<u32> {
+    let mut indices = vec![];
+    let width = width as u32;// + 1;
+
+    let face_stride = width * width;
+    for face in 0..6 {
+        let base = face * face_stride;
+        for x in 0..=width {
+            let x = base + x;
+            indices.push(x);
+            indices.push(x + face_stride - width);
+            indices.push(x);
+            indices.push(x + width);
+        }
+    }
+
+    dbg!(indices.len());
+
+    indices
+}
+
+fn golcube_tri_indices(cube: &GolCube) -> Vec<u32> {
     todo!()
 }
