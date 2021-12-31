@@ -23,6 +23,9 @@ fn step(cube: &mut GolCube) {}
 
 /// Return the index of the pixel at the given face and coordinates
 pub fn cube_pixel_idx_in_bounds(u: usize, v: usize, sign: bool, dim: usize, width: usize) -> usize {
+    assert!(u < width);
+    assert!(v < width);
+    assert!(dim < 3);
     let face_stride = width * width;
     let dim_base = dim * face_stride * 2;
     let face_base = dim_base + if sign { face_stride } else { 0 };
@@ -43,17 +46,22 @@ pub fn cube_pixel_idx_out_bounds(u: isize, v: isize, sign: bool, dim: usize, wid
         (true, true) => None,
 
         // Out of bounds in just one dimension
-        (u_or_v, _) => {
+        (u_in_bounds, _) => {
+            // The new orientation has sign in the same place as the out of bounds dimension
+            let off = if u_in_bounds { 2 } else { 1 };
+            let new_dim = (off + dim) % 3;
+
+            /*
             let repr = [u, v, if sign { width - 1 } else { 0 } as isize];
-            let off = if u_or_v { 1 } else { 2 };
 
             let mut unbiased = [0; 3];
             for i in 0..3 {
-                unbiased[i] = repr[(i + dim + off) % 3];
+                unbiased[(i + dim + off) % 3] = repr[i];
             }
 
             let [u, v, sign] = unbiased;
-            Some(cube_pixel_idx_in_bounds(u as _, v as _, sign > 0, (off + dim) % 3, width))
+            */
+            Some(cube_pixel_idx_in_bounds(0, 0, false, new_dim, width))
         }
     }
 }
