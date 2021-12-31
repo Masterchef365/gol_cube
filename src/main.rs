@@ -1,4 +1,5 @@
 use idek::{prelude::*, IndexBuffer, MultiPlatformCamera};
+use gol_cube::GolCube;
 
 fn main() -> Result<()> {
     launch::<_, GolCubeVisualizer>(Settings::default().vr_if_any_args())
@@ -36,7 +37,7 @@ impl App for GolCubeVisualizer {
         for (idx, elem) in cube.data.iter_mut().enumerate() {
             *elem = t.cos()
                 + (idx as f32 + t).cos()
-                + (idx as f32 + 324.234).cos()
+                + ((idx / 20) as f32 + 324.234).cos()
                 > 0.;
         }
 
@@ -61,20 +62,6 @@ impl App for GolCubeVisualizer {
         }
         idek::close_when_asked(platform, &event);
         Ok(())
-    }
-}
-
-struct GolCube {
-    pub data: Vec<bool>,
-    pub width: usize,
-}
-
-impl GolCube {
-    pub fn new(width: usize) -> Self {
-        Self {
-            data: vec![false; 6 * width * width],
-            width,
-        }
     }
 }
 
