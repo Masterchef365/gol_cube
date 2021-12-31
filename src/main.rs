@@ -1,6 +1,6 @@
 use idek::{prelude::*, IndexBuffer, MultiPlatformCamera};
 use gol_cube::GolCube;
-use gol_cube::cube_pixel_idx_in_bounds;
+use gol_cube::{cube_pixel_idx_in_bounds, cube_pixel_idx_out_bounds};
 
 fn main() -> Result<()> {
     launch::<_, GolCubeVisualizer>(Settings::default().vr_if_any_args())
@@ -36,14 +36,16 @@ impl App for GolCubeVisualizer {
         let width = 20;
         let mut cube = GolCube::new(width);
 
-        let k = ctx.start_time().elapsed().as_secs_f32() as usize;
+        let k = 4;//ctx.start_time().elapsed().as_secs_f32() as usize;
         let sign = k % 2 == 0;
         let dim = (k / 2) % 3;
 
-        for x in 0..width {
-            for y in 0..width {
-                let idx = cube_pixel_idx_in_bounds(x, y, sign, dim, width);
-                cube.data[idx] = true;
+        for x in -1..=width as isize {
+            for y in -1..=width as isize {
+                let idx = cube_pixel_idx_out_bounds(x, y, sign, dim, width);
+                if let Some(idx) = idx {
+                    cube.data[idx] = true;
+                }
             }
         }
 
