@@ -127,19 +127,29 @@ fn golcube_tri_indices(cube: &GolCube) -> Vec<u32> {
     let face_idx_stride = idx_stride * idx_stride;
 
     for (face_idx, face) in cube.data.chunks_exact(face_data_stride).enumerate() {
+        let mut backface = |[a, b, c]: [u32; 3]| if face_idx > 3 {
+            indices.extend_from_slice(&[a, b, c]);
+        } else {
+            indices.extend_from_slice(&[c, b, a]);
+        };
+
         let face_base = face_idx as u32 * face_idx_stride;
         for (y, row) in face.chunks_exact(cube.width).enumerate() {
             let row_base = face_base + y as u32 * idx_stride;
             for (x, &elem) in row.iter().enumerate() {
                 let elem_idx = row_base + x as u32;
                 if elem {
-                    indices.push(elem_idx + face_idx_stride);
-                    indices.push(elem_idx + 1);
-                    indices.push(elem_idx);
-
-                    indices.push(elem_idx + face_idx_stride);
-                    indices.push(elem_idx + face_idx_stride + 1);
-                    indices.push(elem_idx + 1);
+                    backface([
+                        elem_idx + idx_stride,
+                        elem_idx + 1,
+                        elem_idx,
+                    ]);
+                    
+                    backface([
+                        elem_idx + idx_stride,
+                        elem_idx + idx_stride + 1,
+                        elem_idx + 1,
+                    ]);
                 }
             }
         }
