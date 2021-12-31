@@ -1,5 +1,6 @@
 use idek::{prelude::*, IndexBuffer, MultiPlatformCamera};
 use gol_cube::GolCube;
+use gol_cube::cube_pixel_idx_in_bounds;
 
 fn main() -> Result<()> {
     launch::<_, GolCubeVisualizer>(Settings::default().vr_if_any_args())
@@ -32,7 +33,21 @@ impl App for GolCubeVisualizer {
     }
 
     fn frame(&mut self, ctx: &mut Context, _: &mut Platform) -> Result<Vec<DrawCmd>> {
-        let mut cube = GolCube::new(20);
+        let width = 20;
+        let mut cube = GolCube::new(width);
+
+        let k = ctx.start_time().elapsed().as_secs_f32() as usize;
+        let sign = k % 2 == 0;
+        let dim = (k / 2) % 3;
+
+        for x in 0..width {
+            for y in 0..width {
+                let idx = cube_pixel_idx_in_bounds(x, y, sign, dim, width);
+                cube.data[idx] = true;
+            }
+        }
+
+        /*
         let t = ctx.start_time().elapsed().as_secs_f32();
         for (idx, elem) in cube.data.iter_mut().enumerate() {
             *elem = t.cos()
@@ -40,8 +55,9 @@ impl App for GolCubeVisualizer {
                 + ((idx / 20) as f32 + 324.234).cos()
                 > 0.;
         }
-
+        */
         //cube.data.fill(true);
+
         let indices = golcube_tri_indices(&cube);
         ctx.update_indices(self.indices, &indices)?;
 
