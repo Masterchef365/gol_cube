@@ -12,14 +12,16 @@ impl GolCube {
     }
 }
 
-fn step(cube: &mut GolCube) {}
-
 // The cube is indexed as follows:
 // for dim in 0..3
 //     for sign in [low, hi]
 //         for x in 0..width
 //             for y in 0..width
 // Each of the three dimensions contains two faces (positive and negative sign) and then x, y
+// Dimensions:
+// 0: [u, v, sign]
+// 1: [sign, u, v]
+// 2: [v, sign, u]
 
 /// Return the index of the pixel at the given face and coordinates
 pub fn cube_pixel_idx_in_bounds(u: usize, v: usize, sign: bool, dim: usize, width: usize) -> usize {
@@ -51,15 +53,57 @@ pub fn cube_pixel_idx_out_bounds(u: isize, v: isize, sign: bool, dim: usize, wid
             let off = if u_in_bounds { 2 } else { 1 };
             let new_dim = (off + dim) % 3;
 
+            // Create an array representation of our input coordinates
             let repr = [u, v, if sign { width - 1 } else { 0 } as isize];
 
+            // Rotate the coordinates based off of where the new sign bit goes
             let mut unbiased = [0; 3];
             for i in 0..3 {
                 unbiased[(i + off) % 3] = repr[i];
             }
 
+            // Interpret the rotated coordinates
             let [u, v, sign] = unbiased;
             Some(cube_pixel_idx_in_bounds(u as _, v as _, sign > 0, new_dim, width))
+        }
+    }
+}
+
+pub fn step(read: &GolCube, write: &mut GolCube) {
+    assert_eq!(read.width, write.width);
+    let width = read.width;
+
+    let mut neighborhood = vec![];
+    for du in -1..=1 {
+        for dv in -1..=1 {
+            if !(du == 0 && dv == 0) {
+                neighborhood.push((du, dv));
+            }
+        }
+    }
+
+    for dim in 0..3 {
+        for sign in [false, true] {
+            for u in 0..width {
+                for v in 0..width {
+                    let mut neighbors = 0;
+                    for &(du, dv) in &neighborhood {
+                        let iu = u as isize + du;
+                        let iv = v as isize + dv;
+                        if let Some(idx) = cube_pixel_idx_out_bounds(iu, iv, sign, dim, width) {
+                            neighbors += read.data[idx] as usize;
+                        }
+                    }
+
+                    let center_idx = cube_pixel_idx_in_bounds(u, v, sign, dim, width); 
+                    let center = read.data[center_idx]; 
+                    write.data[center_idx] = match (center, neighbors) {
+                        (true, n) if (n == 2 || n == 3) => true,
+                        (false, n) if (n == 3) => true,
+                        _ => false,
+                    };
+                }
+            }
         }
     }
 }

@@ -11,16 +11,27 @@ struct GolCubeVisualizer {
     indices: IndexBuffer,
     points_shader: Shader,
     camera: MultiPlatformCamera,
+
+    front: GolCube,
+    back: GolCube,
 }
 
 impl App for GolCubeVisualizer {
     fn init(ctx: &mut Context, platform: &mut Platform, _: ()) -> Result<Self> {
         let width = 20;
         let vertices = golcube_vertices(width);
-        //let indices: Vec<u32> = (0..vertices.len() as u32).collect();
         let indices = golcube_dummy_tri_indices(width);
 
+        let mut rng = rand::thread_rng();
+        use rand::prelude::*;
+        let mut front = GolCube::new(width);
+        for _ in 0..front.data.len() / 2 {
+            *front.data.choose_mut(&mut rng).unwrap() = true;
+        }
+
         Ok(Self {
+            front,
+            back: GolCube::new(width),
             points_shader: ctx.shader(
                 DEFAULT_VERTEX_SHADER,
                 DEFAULT_FRAGMENT_SHADER,
@@ -33,21 +44,24 @@ impl App for GolCubeVisualizer {
     }
 
     fn frame(&mut self, ctx: &mut Context, _: &mut Platform) -> Result<Vec<DrawCmd>> {
+
+        /*
         let width = 20;
         let mut cube = GolCube::new(width);
 
-        let k = (ctx.start_time().elapsed().as_secs_f32() / 2.) as usize;
+        let k = (ctx.start_time().elapsed().as_secs_f32() / 5.) as usize;
         let sign = k % 2 == 0;
         let dim = (k / 2) % 3;
 
         for x in -1..=width as isize {
-            for y in -1..=width as isize {
+            for y in -1..=1 {
                 let idx = cube_pixel_idx_out_bounds(x, y, sign, dim, width);
                 if let Some(idx) = idx {
                     cube.data[idx] = true;
                 }
             }
         }
+        */
 
         /*
         let t = ctx.start_time().elapsed().as_secs_f32();
@@ -60,7 +74,11 @@ impl App for GolCubeVisualizer {
         */
         //cube.data.fill(true);
 
-        let indices = golcube_tri_indices(&cube);
+        std::mem::swap(&mut self.front, &mut self.back);
+        gol_cube::step(&self.back, &mut self.front);
+
+
+        let indices = golcube_tri_indices(&self.front);
         ctx.update_indices(self.indices, &indices)?;
 
         Ok(vec![DrawCmd::new(self.verts)
