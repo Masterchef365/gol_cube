@@ -32,7 +32,15 @@ impl App for GolCubeVisualizer {
 
     fn frame(&mut self, ctx: &mut Context, _: &mut Platform) -> Result<Vec<DrawCmd>> {
         let mut cube = GolCube::new(20);
-        cube.data.fill(true);
+        let t = ctx.start_time().elapsed().as_secs_f32();
+        for (idx, elem) in cube.data.iter_mut().enumerate() {
+            *elem = t.cos()
+                + (idx as f32 + t).cos()
+                + (idx as f32 + 324.234).cos()
+                > 0.;
+        }
+
+        //cube.data.fill(true);
         let indices = golcube_tri_indices(&cube);
         ctx.update_indices(self.indices, &indices)?;
 
@@ -128,11 +136,15 @@ fn golcube_tri_indices(cube: &GolCube) -> Vec<u32> {
 
     for (face_idx, face) in cube.data.chunks_exact(face_data_stride).enumerate() {
         let mut backface = |[a, b, c]: [u32; 3]| {
+            indices.extend_from_slice(&[a, b, c]);
+            indices.extend_from_slice(&[c, b, a]);
+            /*
             if face_idx % 2 != 0 {
                 indices.extend_from_slice(&[a, b, c]);
             } else {
                 indices.extend_from_slice(&[c, b, a]);
             }
+            */
         };
 
         let face_base = face_idx as u32 * face_idx_stride;
@@ -157,5 +169,6 @@ fn golcube_tri_indices(cube: &GolCube) -> Vec<u32> {
 }
 
 fn golcube_dummy_tri_indices(width: usize) -> Vec<u32> {
-    (0..width * width * 6 * 3 * 2).map(|_| 0).collect()
+    //(0..width * width * 6 * 3 * 2).map(|_| 0).collect()
+    (0..width * width * 6 * 3 * 2 * 2).map(|_| 0).collect()
 }
