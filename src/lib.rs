@@ -51,17 +51,15 @@ pub fn cube_pixel_idx_out_bounds(u: isize, v: isize, sign: bool, dim: usize, wid
             let off = if u_in_bounds { 2 } else { 1 };
             let new_dim = (off + dim) % 3;
 
-            /*
             let repr = [u, v, if sign { width - 1 } else { 0 } as isize];
 
             let mut unbiased = [0; 3];
             for i in 0..3 {
-                unbiased[(i + dim + off) % 3] = repr[i];
+                unbiased[(i + off) % 3] = repr[i];
             }
 
             let [u, v, sign] = unbiased;
-            */
-            Some(cube_pixel_idx_in_bounds(0, 0, false, new_dim, width))
+            Some(cube_pixel_idx_in_bounds(u as _, v as _, sign > 0, new_dim, width))
         }
     }
 }

@@ -36,12 +36,12 @@ impl App for GolCubeVisualizer {
         let width = 20;
         let mut cube = GolCube::new(width);
 
-        let k = (ctx.start_time().elapsed().as_secs_f32() / 10.) as usize;
+        let k = (ctx.start_time().elapsed().as_secs_f32() / 2.) as usize;
         let sign = k % 2 == 0;
         let dim = (k / 2) % 3;
 
         for x in -1..=width as isize {
-            for y in 0..=1 {
+            for y in -1..=width as isize {
                 let idx = cube_pixel_idx_out_bounds(x, y, sign, dim, width);
                 if let Some(idx) = idx {
                     cube.data[idx] = true;
