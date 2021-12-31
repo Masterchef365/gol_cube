@@ -16,22 +16,28 @@ impl App for GolCubeVisualizer {
         let width = 20;
         let vertices = golcube_vertices(width);
         //let indices: Vec<u32> = (0..vertices.len() as u32).collect();
-        let indices = golcube_dense_line_indices(width);
+        let indices = golcube_dummy_tri_indices(width);
 
         Ok(Self {
             points_shader: ctx.shader(
                 DEFAULT_VERTEX_SHADER,
                 DEFAULT_FRAGMENT_SHADER,
-                Primitive::Lines,
+                Primitive::Triangles,
             )?,
             verts: ctx.vertices(&vertices, false)?,
-            indices: ctx.indices(&indices, false)?,
+            indices: ctx.indices(&indices, true)?,
             camera: MultiPlatformCamera::new(platform),
         })
     }
 
-    fn frame(&mut self, _ctx: &mut Context, _: &mut Platform) -> Result<Vec<DrawCmd>> {
+    fn frame(&mut self, ctx: &mut Context, _: &mut Platform) -> Result<Vec<DrawCmd>> {
+        let mut cube = GolCube::new(20);
+        cube.data.fill(true);
+        let indices = golcube_tri_indices(&cube);
+        ctx.update_indices(self.indices, &indices)?;
+
         Ok(vec![DrawCmd::new(self.verts)
+            .limit(indices.len() as _)
             .indices(self.indices)
             .shader(self.points_shader)])
     }
@@ -83,8 +89,8 @@ fn golcube_vertices(width: usize) -> Vec<Vertex> {
                     }
                     vertices.push(Vertex {
                         pos,
-                        //color: pos.map(|v| if v > 0. { v } else { -v * 0.8 }),
-                        color: [1.; 3],
+                        color: pos.map(|v| if v > 0. { v } else { -v * 0.3 }),
+                        //color: [1.; 3],
                     });
                 }
             }
@@ -114,5 +120,34 @@ fn golcube_dense_line_indices(width: usize) -> Vec<u32> {
 }
 
 fn golcube_tri_indices(cube: &GolCube) -> Vec<u32> {
-    todo!()
+    let mut indices = vec![];
+    let idx_stride = cube.width as u32 + 1;
+
+    let face_data_stride = cube.width * cube.width;
+    let face_idx_stride = idx_stride * idx_stride;
+
+    for (face_idx, face) in cube.data.chunks_exact(face_data_stride).enumerate() {
+        let face_base = face_idx as u32 * face_idx_stride;
+        for (y, row) in face.chunks_exact(cube.width).enumerate() {
+            let row_base = face_base + y as u32 * idx_stride;
+            for (x, &elem) in row.iter().enumerate() {
+                let elem_idx = row_base + x as u32;
+                if elem {
+                    indices.push(elem_idx + face_idx_stride);
+                    indices.push(elem_idx + 1);
+                    indices.push(elem_idx);
+
+                    indices.push(elem_idx + face_idx_stride);
+                    indices.push(elem_idx + face_idx_stride + 1);
+                    indices.push(elem_idx + 1);
+                }
+            }
+        }
+    }
+
+    indices
+}
+
+fn golcube_dummy_tri_indices(width: usize) -> Vec<u32> {
+    (0..width * width * 6 * 3 * 2).map(|_| 0).collect()
 }
