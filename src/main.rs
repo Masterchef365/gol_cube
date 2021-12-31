@@ -96,21 +96,19 @@ fn golcube_vertices(width: usize) -> Vec<Vertex> {
 
 fn golcube_dense_line_indices(width: usize) -> Vec<u32> {
     let mut indices = vec![];
-    let width = width as u32;// + 1;
+    let width = width as u32;
+    let stride = width + 1;
 
-    let face_stride = width * width;
+    let face_stride = stride * stride;
     for face in 0..6 {
         let base = face * face_stride;
-        for x in 0..=width {
-            let x = base + x;
-            indices.push(x);
-            indices.push(x + face_stride - width);
-            indices.push(x);
-            indices.push(x + width);
+        for x in 0..stride {
+            indices.push(base + x);
+            indices.push(base + x + face_stride - stride);
+            indices.push(base + x * stride);
+            indices.push(base + x * stride + width);
         }
     }
-
-    dbg!(indices.len());
 
     indices
 }
