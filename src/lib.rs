@@ -92,6 +92,8 @@ pub fn step(read: &GolCube, write: &mut GolCube) {
                         let iv = v as isize + dv;
                         if let Some(idx) = cube_pixel_idx_out_bounds(iu, iv, sign, dim, width) {
                             neighbors += read.data[idx] as usize;
+                        } else {
+                            neighbors += 1;
                         }
                     }
 

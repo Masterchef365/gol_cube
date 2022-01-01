@@ -8,3 +8,4 @@ anyhow = "1"
 idek = { git = "https://github.com/Masterchef365/idek.git", rev = "6a5678f" }
 #idek = { path = "../idek" }
 rand = "0.8"
+structopt = { version = "0.3", default-features = false }

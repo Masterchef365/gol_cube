@@ -1,9 +1,26 @@
 use idek::{prelude::*, IndexBuffer, MultiPlatformCamera};
 use gol_cube::GolCube;
-use gol_cube::{cube_pixel_idx_in_bounds, cube_pixel_idx_out_bounds};
+use structopt::StructOpt;
+
+#[derive(StructOpt, Default)]
+#[structopt(name = "Conway's Game of Life on da cube", about = "what do you think")]
+struct Opt {
+    /// Visualize in VR
+    #[structopt(short, long)]
+    vr: bool,
+
+    /// Cube width
+    #[structopt(short, long, default_value="100")]
+    width: usize,
+
+    /// Update interval
+    #[structopt(short, long, default_value="1")]
+    interval: usize,
+}
 
 fn main() -> Result<()> {
-    launch::<_, GolCubeVisualizer>(Settings::default().vr_if_any_args())
+    let opt = Opt::from_args();
+    launch::<Opt, GolCubeVisualizer>(Settings::default().vr(opt.vr).args(opt))
 }
 
 struct GolCubeVisualizer {
@@ -14,24 +31,26 @@ struct GolCubeVisualizer {
 
     front: GolCube,
     back: GolCube,
+
+    opt: Opt,
+    frame: usize,
 }
 
-impl App for GolCubeVisualizer {
-    fn init(ctx: &mut Context, platform: &mut Platform, _: ()) -> Result<Self> {
-        let width = 20;
-        let vertices = golcube_vertices(width);
-        let indices = golcube_dummy_tri_indices(width);
+impl App<Opt> for GolCubeVisualizer {
+    fn init(ctx: &mut Context, platform: &mut Platform, opt: Opt) -> Result<Self> {
+        let vertices = golcube_vertices(opt.width);
+        let indices = golcube_dummy_tri_indices(opt.width);
 
         let mut rng = rand::thread_rng();
         use rand::prelude::*;
-        let mut front = GolCube::new(width);
+        let mut front = GolCube::new(opt.width);
         for _ in 0..front.data.len() / 2 {
             *front.data.choose_mut(&mut rng).unwrap() = true;
         }
 
         Ok(Self {
             front,
-            back: GolCube::new(width),
+            back: GolCube::new(opt.width),
             points_shader: ctx.shader(
                 DEFAULT_VERTEX_SHADER,
                 DEFAULT_FRAGMENT_SHADER,
@@ -40,43 +59,17 @@ impl App for GolCubeVisualizer {
             verts: ctx.vertices(&vertices, false)?,
             indices: ctx.indices(&indices, true)?,
             camera: MultiPlatformCamera::new(platform),
+            opt,
+            frame: 0,
         })
     }
 
     fn frame(&mut self, ctx: &mut Context, _: &mut Platform) -> Result<Vec<DrawCmd>> {
-
-        /*
-        let width = 20;
-        let mut cube = GolCube::new(width);
-
-        let k = (ctx.start_time().elapsed().as_secs_f32() / 5.) as usize;
-        let sign = k % 2 == 0;
-        let dim = (k / 2) % 3;
-
-        for x in -1..=width as isize {
-            for y in -1..=1 {
-                let idx = cube_pixel_idx_out_bounds(x, y, sign, dim, width);
-                if let Some(idx) = idx {
-                    cube.data[idx] = true;
-                }
-            }
+        if self.frame % self.opt.interval == 0 {
+            std::mem::swap(&mut self.front, &mut self.back);
+            gol_cube::step(&self.back, &mut self.front);
         }
-        */
-
-        /*
-        let t = ctx.start_time().elapsed().as_secs_f32();
-        for (idx, elem) in cube.data.iter_mut().enumerate() {
-            *elem = t.cos()
-                + (idx as f32 + t).cos()
-                + ((idx / 20) as f32 + 324.234).cos()
-                > 0.;
-        }
-        */
-        //cube.data.fill(true);
-
-        std::mem::swap(&mut self.front, &mut self.back);
-        gol_cube::step(&self.back, &mut self.front);
-
+        self.frame += 1;
 
         let indices = golcube_tri_indices(&self.front);
         ctx.update_indices(self.indices, &indices)?;
@@ -131,6 +124,7 @@ fn golcube_vertices(width: usize) -> Vec<Vertex> {
     vertices
 }
 
+/*
 fn golcube_dense_line_indices(width: usize) -> Vec<u32> {
     let mut indices = vec![];
     let width = width as u32;
@@ -149,6 +143,7 @@ fn golcube_dense_line_indices(width: usize) -> Vec<u32> {
 
     indices
 }
+*/
 
 fn golcube_tri_indices(cube: &GolCube) -> Vec<u32> {
     let mut indices = vec![];
