@@ -1,6 +1,7 @@
 use idek::{prelude::*, IndexBuffer, MultiPlatformCamera};
 use gol_cube::GolCube;
 use structopt::StructOpt;
+use rand::prelude::*;
 
 #[derive(StructOpt, Default)]
 #[structopt(name = "Conway's Game of Life on da cube", about = "what do you think")]
@@ -16,6 +17,14 @@ struct Opt {
     /// Update interval
     #[structopt(short, long, default_value="1")]
     interval: usize,
+
+    /// Fill percentage for the initial value
+    #[structopt(short, long, default_value="0.25")]
+    rand_p: f64,
+
+    /// Seed. If unspecified, random seed
+    #[structopt(short, long)]
+    seed: Option<u64>,
 }
 
 fn main() -> Result<()> {
@@ -41,12 +50,10 @@ impl App<Opt> for GolCubeVisualizer {
         let vertices = golcube_vertices(opt.width);
         let indices = golcube_dummy_tri_indices(opt.width);
 
-        let mut rng = rand::thread_rng();
-        use rand::prelude::*;
+        let mut rng = SmallRng::seed_from_u64(opt.seed.unwrap_or_else(|| rand::thread_rng().gen()));
         let mut front = GolCube::new(opt.width);
-        for _ in 0..front.data.len() / 2 {
-            *front.data.choose_mut(&mut rng).unwrap() = true;
-        }
+
+        front.data.iter_mut().for_each(|px| *px = rng.gen_bool(opt.rand_p));
 
         Ok(Self {
             front,
