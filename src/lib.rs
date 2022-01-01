@@ -37,7 +37,13 @@ pub fn cube_pixel_idx_in_bounds(u: usize, v: usize, sign: bool, dim: usize, widt
 
 /// Return the index of the pixel at the given face and coordinates, handling boundary cases
 /// Returns None when the given index does not exist
-pub fn cube_pixel_idx_out_bounds(u: isize, v: isize, sign: bool, dim: usize, width: usize) -> Option<usize> {
+pub fn cube_pixel_idx_out_bounds(
+    u: isize,
+    v: isize,
+    sign: bool,
+    dim: usize,
+    width: usize,
+) -> Option<usize> {
     let is_in_bounds = |x| x < 0 || x >= width as isize;
 
     match (is_in_bounds(u), is_in_bounds(v)) {
@@ -64,7 +70,13 @@ pub fn cube_pixel_idx_out_bounds(u: isize, v: isize, sign: bool, dim: usize, wid
 
             // Interpret the rotated coordinates
             let [u, v, sign] = unbiased;
-            Some(cube_pixel_idx_in_bounds(u as _, v as _, sign > 0, new_dim, width))
+            Some(cube_pixel_idx_in_bounds(
+                u as _,
+                v as _,
+                sign > 0,
+                new_dim,
+                width,
+            ))
         }
     }
 }
@@ -97,8 +109,8 @@ pub fn step(read: &GolCube, write: &mut GolCube) {
                         }
                     }
 
-                    let center_idx = cube_pixel_idx_in_bounds(u, v, sign, dim, width); 
-                    let center = read.data[center_idx]; 
+                    let center_idx = cube_pixel_idx_in_bounds(u, v, sign, dim, width);
+                    let center = read.data[center_idx];
                     write.data[center_idx] = match (center, neighbors) {
                         (true, n) if (n == 2 || n == 3) => true,
                         (false, n) if (n == 3) => true,
