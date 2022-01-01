@@ -1,0 +1,2 @@
+cargo run --offline --release -- -r 0.04 -w 200 -s 9151498838548282454
+

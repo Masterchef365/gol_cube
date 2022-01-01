@@ -14,7 +14,7 @@ struct Opt {
     #[structopt(short, long, default_value = "100")]
     width: usize,
 
-    /// Update interval
+    /// update interval
     #[structopt(short, long, default_value = "1")]
     interval: usize,
 
@@ -25,6 +25,10 @@ struct Opt {
     /// Seed. If unspecified, random seed
     #[structopt(short, long)]
     seed: Option<u64>,
+
+    /// Seed. If unspecified, random seed
+    #[structopt(long)]
+    sphere: bool,
 }
 
 fn main() -> Result<()> {
@@ -47,7 +51,16 @@ struct GolCubeVisualizer {
 
 impl App<Opt> for GolCubeVisualizer {
     fn init(ctx: &mut Context, platform: &mut Platform, opt: Opt) -> Result<Self> {
-        let vertices = golcube_vertices(opt.width);
+        let mut vertices = golcube_vertices(opt.width);
+
+        if opt.sphere {
+            vertices.iter_mut().for_each(|v| {
+                let len = v.pos.iter().map(|x| x * x).sum::<f32>().sqrt();
+                v.pos = v.pos.map(|x| x / len);
+            });
+        }
+
+
         let indices = golcube_dummy_tri_indices(opt.width);
 
         let seed = opt.seed.unwrap_or_else(|| rand::thread_rng().gen());
