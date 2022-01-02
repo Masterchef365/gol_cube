@@ -29,6 +29,10 @@ struct Opt {
     /// Seed. If unspecified, random seed
     #[structopt(long)]
     sphere: bool,
+
+    /// The missing values on corners are true instead of false if this is set
+    #[structopt(long)]
+    corner_true: bool,
 }
 
 fn main() -> Result<()> {
@@ -92,7 +96,7 @@ impl App<Opt> for GolCubeVisualizer {
     fn frame(&mut self, ctx: &mut Context, _: &mut Platform) -> Result<Vec<DrawCmd>> {
         if self.frame % self.opt.interval == 0 {
             std::mem::swap(&mut self.front, &mut self.back);
-            gol_cube::step(&self.back, &mut self.front);
+            gol_cube::step(&self.back, &mut self.front, self.opt.corner_true);
         }
         self.frame += 1;
 
