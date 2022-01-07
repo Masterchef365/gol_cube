@@ -2,6 +2,7 @@ use crate::GolCube;
 use anyhow::{bail, ensure, format_err, Context as AnyhowContext, Result};
 use std::fs::File;
 use std::path::Path;
+use std::iter::repeat;
 
 /// Load a GolCube from a file.
 pub fn import_golcube_png(path: impl AsRef<Path>) -> Result<GolCube> {
@@ -13,6 +14,32 @@ pub fn import_golcube_png(path: impl AsRef<Path>) -> Result<GolCube> {
 /// Export a GolCube to a file
 pub fn export_golcube_png(path: impl AsRef<Path>, cube: &GolCube) -> Result<()> {
     write_png_binary(path, &cube.data, cube.width)
+}
+
+/// Imports the given RLE onto one face of a GolCube
+pub fn import_golcube_rle(path: impl AsRef<Path>) -> Result<GolCube> {
+    let (rle_data, width) = load_rle(path)?;
+    let height = rle_data.len() / width;
+
+    // Fit the whole pattern on one face
+    let side_len = width.max(height);
+
+    // Populate the face
+    let mut out_data = vec![];
+    for row in rle_data.chunks_exact(width) {
+        let row_len = row.len(); 
+        out_data.extend_from_slice(&row);
+        out_data.extend(repeat(false).take(side_len - row_len));
+    }
+
+    // Fill the rest with zeroes
+    let out_len = out_data.len();
+    out_data.extend(repeat(false).take(side_len * side_len * 6 - out_len));
+
+    Ok(GolCube { 
+        data: out_data,
+        width: side_len,
+    })
 }
 
 /// Import an RLE file
@@ -66,12 +93,12 @@ pub fn load_rle(path: impl AsRef<Path>) -> Result<(Vec<bool>, usize)> {
                     x += n;
                     if x > width {
                     }
-                    data.extend(std::iter::repeat(c == 'o').take(n));
+                    data.extend(repeat(c == 'o').take(n));
                 }
                 '$' | '!' => {
                     match width.checked_sub(x) {
                         None => bail!("Pattern exceeds width!"),
-                        Some(filler) => data.extend(std::iter::repeat(false).take(filler)),
+                        Some(filler) => data.extend(repeat(false).take(filler)),
                     }
                     digits.clear();
                     x = 0;
@@ -87,7 +114,7 @@ pub fn load_rle(path: impl AsRef<Path>) -> Result<(Vec<bool>, usize)> {
     }
 
     let len = data.len();
-    data.extend(std::iter::repeat(false).take((width * height).checked_sub(len).unwrap()));
+    data.extend(repeat(false).take((width * height).checked_sub(len).unwrap()));
 
     /*if data.len() !=  {
         bail!(

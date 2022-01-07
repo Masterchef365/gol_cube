@@ -1,4 +1,4 @@
-use anyhow::{Result};
+use anyhow::{Result, bail};
 use gol_cube::{GolCube, io::*};
 use idek::{prelude::*, IndexBuffer, MultiPlatformCamera};
 use rand::prelude::*;
@@ -72,7 +72,12 @@ impl App<Opt> for GolCubeVisualizer {
     fn init(ctx: &mut Context, platform: &mut Platform, opt: Opt) -> Result<Self> {
         let mut front;
         if let Some(import_path) = opt.import.as_ref() {
-            front = import_golcube_png(import_path)?;
+            front = match import_path.extension().and_then(|s| s.to_str()) {
+                Some("png") => import_golcube_png(import_path)?,
+                Some("rle") => import_golcube_rle(import_path)?,
+                _ => bail!("Unrecognized file extension, supports only PNG and RLE"),
+            }
+
         } else {
             let seed = opt.seed.unwrap_or_else(|| rand::thread_rng().gen());
             println!("Using seed {}", seed);
