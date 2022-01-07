@@ -1,10 +1,10 @@
+use anyhow::{bail, ensure, Context as AnyhowContext, Result};
 use gol_cube::GolCube;
-use std::fs::File;
-use anyhow::{Context as AnyhowContext, Result, ensure, bail};
 use idek::{prelude::*, IndexBuffer, MultiPlatformCamera};
 use rand::prelude::*;
+use std::fs::File;
+use std::path::{Path, PathBuf};
 use structopt::StructOpt;
-use std::path::{PathBuf, Path};
 
 #[derive(StructOpt, Default)]
 #[structopt(name = "Conway's Game of Life on da cube", about = "what do you think")]
@@ -66,7 +66,21 @@ struct GolCubeVisualizer {
 
 impl App<Opt> for GolCubeVisualizer {
     fn init(ctx: &mut Context, platform: &mut Platform, opt: Opt) -> Result<Self> {
-        let mut vertices = golcube_vertices(opt.width);
+        let mut front;
+        if let Some(import_path) = opt.import.as_ref() {
+            front = import_golcube_png(import_path)?;
+        } else {
+            let seed = opt.seed.unwrap_or_else(|| rand::thread_rng().gen());
+            println!("Using seed {}", seed);
+            let mut rng = SmallRng::seed_from_u64(seed);
+            front = GolCube::new(opt.width);
+            front
+                .data
+                .iter_mut()
+                .for_each(|px| *px = rng.gen_bool(opt.rand_p));
+        }
+
+        let mut vertices = golcube_vertices(front.width);
 
         if opt.sphere {
             vertices.iter_mut().for_each(|v| {
@@ -75,28 +89,11 @@ impl App<Opt> for GolCubeVisualizer {
             });
         }
 
-
-        let indices = golcube_dummy_tri_indices(opt.width);
-
-        let seed = opt.seed.unwrap_or_else(|| rand::thread_rng().gen());
-        println!("Using seed {}", seed);
-        let mut rng = SmallRng::seed_from_u64(seed);
-
-        let mut front;
-        if let Some(import_path) = opt.import {
-            //import_golcube_png(import_path)?
-            unimplemented!("Imports currently unsupported!")
-        } else {
-            front = GolCube::new(opt.width);
-            front
-                .data
-                .iter_mut()
-                .for_each(|px| *px = rng.gen_bool(opt.rand_p));
-        }
+        let indices = golcube_dummy_tri_indices(front.width);
 
         Ok(Self {
+            back: GolCube::new(front.width),
             front,
-            back: GolCube::new(opt.width),
             points_shader: ctx.shader(
                 DEFAULT_VERTEX_SHADER,
                 DEFAULT_FRAGMENT_SHADER,
@@ -136,21 +133,21 @@ impl App<Opt> for GolCubeVisualizer {
             ctx.set_camera_prefix(self.camera.get_prefix())
         }
         match (event, platform) {
-        (
-            Event::Winit(idek::winit::event::Event::WindowEvent {
-                event: idek::winit::event::WindowEvent::CloseRequested,
-                ..
-            }),
-            Platform::Winit { control_flow, .. },
-        ) => {
-            if let Some(export_path) = self.opt.export.as_ref() {
-                write_png_mono(export_path, &self.front.data, self.front.width)?;
-            }
+            (
+                Event::Winit(idek::winit::event::Event::WindowEvent {
+                    event: idek::winit::event::WindowEvent::CloseRequested,
+                    ..
+                }),
+                Platform::Winit { control_flow, .. },
+            ) => {
+                if let Some(export_path) = self.opt.export.as_ref() {
+                    write_png_binary(export_path, &self.front.data, self.front.width)?;
+                }
 
-            **control_flow = idek::winit::event_loop::ControlFlow::Exit
+                **control_flow = idek::winit::event_loop::ControlFlow::Exit
+            }
+            _ => (),
         }
-        _ => (),
-    }
         Ok(())
     }
 }
@@ -252,12 +249,15 @@ fn golcube_dummy_tri_indices(width: usize) -> Vec<u32> {
     (0..width * width * 6 * 3 * 2 * 2).map(|_| 0).collect()
 }
 
-fn import_golcube_png() {
+/// Load a GolCube from a file.
+fn import_golcube_png(path: impl AsRef<Path>) -> Result<GolCube> {
+    let (width, data) = load_png_binary(path)?;
+    ensure!(data.len() == width * width * 6);
+    Ok(GolCube { data, width })
 }
 
-/// Returns (width, rgb data) for the given PNG image reader
-/*
-fn load_png_mono(path: impl AsRef<Path>) -> Result<(usize, Vec<bool>)> {
+/// Returns (width, mono data) for the given PNG image reader
+fn load_png_binary(path: impl AsRef<Path>) -> Result<(usize, Vec<bool>)> {
     let decoder = png::Decoder::new(File::open(path)?);
     let mut reader = decoder.read_info().context("Creating reader")?;
 
@@ -270,27 +270,22 @@ fn load_png_mono(path: impl AsRef<Path>) -> Result<(usize, Vec<bool>)> {
 
     buf.truncate(info.buffer_size());
 
-    let buf: Vec<u8> = match info.color_type {
-        png::ColorType::Rgb => buf,
-        png::ColorType::Rgba => buf
-            .chunks_exact(4)
-            .map(|px| [px[0], px[1], px[2]])
-            .flatten()
-            .collect(),
-        png::ColorType::Grayscale => buf.iter().map(|&px| [px; 3]).flatten().collect(),
-        png::ColorType::GrayscaleAlpha => {
-            buf.chunks_exact(2).map(|px| [px[0]; 3]).flatten().collect()
-        }
-        other => bail!("Images with color type {:?} are unsupported", other),
-    };
+    // Check if the first component of each pixel is > 0
+    let buf = buf
+        .into_iter()
+        .step_by(info.color_type.samples())
+        .map(|v| v > 0)
+        .collect();
 
     Ok((info.width as usize, buf))
 }
-*/
 
 /// Writes the given RGB data to a PNG file
-fn write_png_mono(path: impl AsRef<Path>, buf: &[bool], width: usize) -> Result<()> {
-    ensure!(buf.len() % width == 0, "Image data must be divisible by width");
+fn write_png_binary(path: impl AsRef<Path>, buf: &[bool], width: usize) -> Result<()> {
+    ensure!(
+        buf.len() % width == 0,
+        "Image data must be divisible by width"
+    );
     let height = buf.len() / width;
 
     let file = std::fs::File::create(path)?;
@@ -301,7 +296,11 @@ fn write_png_mono(path: impl AsRef<Path>, buf: &[bool], width: usize) -> Result<
     encoder.set_depth(png::BitDepth::Eight);
     let mut writer = encoder.write_header()?;
 
-    let buf: Vec<u8> = buf.iter().copied().map(|v| if v { 0xff } else { 0x00 }).collect();
+    let buf: Vec<u8> = buf
+        .iter()
+        .copied()
+        .map(|v| if v { 0xff } else { 0x00 })
+        .collect();
 
     writer.write_image_data(&buf)?;
 
