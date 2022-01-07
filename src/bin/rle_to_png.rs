@@ -1,5 +1,5 @@
 use gol_cube::io::*;
-use std::path::PathBuf;
+
 use anyhow::{Result, Context};
 
 fn main() -> Result<()> {

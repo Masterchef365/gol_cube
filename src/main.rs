@@ -1,9 +1,9 @@
-use anyhow::{bail, ensure, Context as AnyhowContext, Result};
+use anyhow::{Result};
 use gol_cube::{GolCube, io::*};
 use idek::{prelude::*, IndexBuffer, MultiPlatformCamera};
 use rand::prelude::*;
-use std::fs::File;
-use std::path::{Path, PathBuf};
+
+use std::path::{PathBuf};
 use structopt::StructOpt;
 
 #[derive(StructOpt, Default)]

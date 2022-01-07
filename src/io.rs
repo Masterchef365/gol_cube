@@ -1,7 +1,6 @@
 use crate::GolCube;
 use anyhow::{bail, ensure, format_err, Context as AnyhowContext, Result};
 use std::fs::File;
-use std::io::{BufRead, BufReader};
 use std::path::Path;
 
 /// Load a GolCube from a file.
