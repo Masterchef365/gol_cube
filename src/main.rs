@@ -44,6 +44,10 @@ struct Opt {
     /// Export a PNG image on quit
     #[structopt(long)]
     export: Option<PathBuf>,
+
+    /// Use white tiles
+    #[structopt(long)]
+    white: bool,
 }
 
 fn main() -> Result<()> {
@@ -80,7 +84,7 @@ impl App<Opt> for GolCubeVisualizer {
                 .for_each(|px| *px = rng.gen_bool(opt.rand_p));
         }
 
-        let mut vertices = golcube_vertices(front.width);
+        let mut vertices = golcube_vertices(front.width, opt.white.then(|| [1.; 3]));
 
         if opt.sphere {
             vertices.iter_mut().for_each(|v| {
@@ -152,7 +156,7 @@ impl App<Opt> for GolCubeVisualizer {
     }
 }
 
-fn golcube_vertices(width: usize) -> Vec<Vertex> {
+fn golcube_vertices(width: usize, color: Option<[f32; 3]>) -> Vec<Vertex> {
     let mut vertices = vec![];
     const MIN: f32 = -1.0;
     const MAX: f32 = 1.0;
@@ -171,8 +175,8 @@ fn golcube_vertices(width: usize) -> Vec<Vertex> {
                     }
                     vertices.push(Vertex {
                         pos,
-                        color: pos.map(|v| if v > 0. { v } else { -v * 0.05 }),
-                        //color: [1.; 3],
+                        color: color
+                            .unwrap_or_else(|| pos.map(|v| if v > 0. { v } else { -v * 0.05 })),
                     });
                 }
             }
