@@ -1,5 +1,5 @@
 use anyhow::{bail, ensure, Context as AnyhowContext, Result};
-use gol_cube::GolCube;
+use gol_cube::{GolCube, io::*};
 use idek::{prelude::*, IndexBuffer, MultiPlatformCamera};
 use rand::prelude::*;
 use std::fs::File;
@@ -145,7 +145,7 @@ impl App<Opt> for GolCubeVisualizer {
                 Platform::Winit { control_flow, .. },
             ) => {
                 if let Some(export_path) = self.opt.export.as_ref() {
-                    write_png_binary(export_path, &self.front.data, self.front.width)?;
+                    export_golcube_png(export_path, &self.front)?;
                 }
 
                 **control_flow = idek::winit::event_loop::ControlFlow::Exit
@@ -251,62 +251,4 @@ fn golcube_tri_indices(cube: &GolCube) -> Vec<u32> {
 fn golcube_dummy_tri_indices(width: usize) -> Vec<u32> {
     //(0..width * width * 6 * 3 * 2).map(|_| 0).collect()
     (0..width * width * 6 * 3 * 2 * 2).map(|_| 0).collect()
-}
-
-/// Load a GolCube from a file.
-fn import_golcube_png(path: impl AsRef<Path>) -> Result<GolCube> {
-    let (width, data) = load_png_binary(path)?;
-    ensure!(data.len() == width * width * 6);
-    Ok(GolCube { data, width })
-}
-
-/// Returns (width, mono data) for the given PNG image reader
-fn load_png_binary(path: impl AsRef<Path>) -> Result<(usize, Vec<bool>)> {
-    let decoder = png::Decoder::new(File::open(path)?);
-    let mut reader = decoder.read_info().context("Creating reader")?;
-
-    let mut buf = vec![0; reader.output_buffer_size()];
-    let info = reader.next_frame(&mut buf).context("Reading frame")?;
-
-    if info.bit_depth != png::BitDepth::Eight {
-        bail!("Bit depth {:?} unsupported!", info.bit_depth);
-    }
-
-    buf.truncate(info.buffer_size());
-
-    // Check if the first component of each pixel is > 0
-    let buf = buf
-        .into_iter()
-        .step_by(info.color_type.samples())
-        .map(|v| v > 0)
-        .collect();
-
-    Ok((info.width as usize, buf))
-}
-
-/// Writes the given RGB data to a PNG file
-fn write_png_binary(path: impl AsRef<Path>, buf: &[bool], width: usize) -> Result<()> {
-    ensure!(
-        buf.len() % width == 0,
-        "Image data must be divisible by width"
-    );
-    let height = buf.len() / width;
-
-    let file = std::fs::File::create(path)?;
-    let ref mut w = std::io::BufWriter::new(file);
-
-    let mut encoder = png::Encoder::new(w, width as _, height as _);
-    encoder.set_color(png::ColorType::Grayscale);
-    encoder.set_depth(png::BitDepth::Eight);
-    let mut writer = encoder.write_header()?;
-
-    let buf: Vec<u8> = buf
-        .iter()
-        .copied()
-        .map(|v| if v { 0xff } else { 0x00 })
-        .collect();
-
-    writer.write_image_data(&buf)?;
-
-    Ok(())
 }

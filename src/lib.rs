@@ -1,3 +1,5 @@
+pub mod io;
+
 pub struct GolCube {
     pub data: Vec<bool>,
     pub width: usize,
