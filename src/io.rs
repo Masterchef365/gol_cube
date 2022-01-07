@@ -51,7 +51,6 @@ pub fn load_rle(path: impl AsRef<Path>) -> Result<(Vec<bool>, usize)> {
 
     let (width, height) = (parse_section("x")?, parse_section("y")?);
 
-    dbg!(width, height);
 
     // Load data
     let mut data = vec![];
@@ -61,19 +60,20 @@ pub fn load_rle(path: impl AsRef<Path>) -> Result<(Vec<bool>, usize)> {
 
     'lines: for line in lines {
         for c in line.trim().chars() {
-            //dbg!(c);
             match c {
                 'b' | 'o' => {
                     let n = digits.parse().unwrap_or(1);
                     digits.clear();
                     x += n;
                     if x > width {
-                        bail!("Pattern exceeds width!");
                     }
                     data.extend(std::iter::repeat(c == 'o').take(n));
                 }
                 '$' | '!' => {
-                    data.extend(std::iter::repeat(false).take(dbg!(width - x)));
+                    match width.checked_sub(x) {
+                        None => bail!("Pattern exceeds width!"),
+                        Some(filler) => data.extend(std::iter::repeat(false).take(filler)),
+                    }
                     digits.clear();
                     x = 0;
                     if c == '!' {
